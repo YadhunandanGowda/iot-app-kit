@@ -28,7 +28,7 @@ import { useDataZoom } from './hooks/useDataZoom';
 import { useViewport } from '../../hooks/useViewport';
 import { getXAxis } from './chartOptions/axes/xAxis';
 import { useHandleChartEvents } from './events/useHandleChartEvents';
-
+import noop from 'lodash.noop';
 /**
  * Developer Notes:
  *
@@ -47,11 +47,19 @@ import { useHandleChartEvents } from './events/useHandleChartEvents';
 /**
  * Base chart to display Line, Scatter, and Bar charts.
  */
-const BaseChart = ({ viewport, queries, size = { width: 500, height: 500 }, ...options }: ChartOptions) => {
+const BaseChart = ({
+  viewport,
+  queries,
+  size = { width: 500, height: 500 },
+  onChartOptionsChange = noop,
+  ...options
+}: ChartOptions) => {
   // Setup instance of echarts
   const { ref, chartRef } = useECharts(options?.theme);
 
   const { group } = useViewport();
+
+  // onChartOptionsChange();
 
   // convert TimeSeriesDataQuery to TimeSeriesData
   const {
@@ -74,7 +82,7 @@ const BaseChart = ({ viewport, queries, size = { width: 500, height: 500 }, ...o
     minConstraints,
     maxConstraints,
     leftLegendRef,
-  } = useResizeableEChart(chartRef, size, options.legend?.visible, isBottomAligned);
+  } = useResizeableEChart(chartRef, size, onChartOptionsChange, options.legend, isBottomAligned);
 
   // apply group to echarts
   useGroupableEChart(chartRef, group);

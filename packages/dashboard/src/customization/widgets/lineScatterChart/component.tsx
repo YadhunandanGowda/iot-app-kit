@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
-import { Chart, useViewport } from '@iot-app-kit/react-components';
+// import { Chart, useViewport } from '@iot-app-kit/react-components';
+import { Chart, useViewport } from '../../../../../react-components/src';
 // FIXME: Export ChartOptions from @iot-app-kit/react-components
 // FIXME: Export ChartStyleSettingsOptions from @iot-app-kit/react-components
 // eslint-disable-next-line no-restricted-imports
@@ -25,6 +26,12 @@ import NoChartData from '../components/no-chart-data';
 import { default as lineSvgDark } from './line-dark.svg';
 import { IoTSiteWiseDataStreamQuery } from '~/types';
 import { assetModelQueryToSiteWiseAssetQuery } from '../utils/assetModelQueryToAssetQuery';
+import { PropertiesSection } from '~/customization/propertiesSectionComponent';
+import { DashboardWidget } from '~/types';
+import { PropertyLens } from '~/customization/propertiesSection';
+import { maybeWithDefault } from '~/util/maybe';
+
+const isLineAndScatterWidget = (w: DashboardWidget): w is LineScatterChartWidget => w.type === 'xy-plot';
 
 const mapConnectionStyleToVisualizationType = (
   connectionStyle: LineStyles['connectionStyle']
@@ -145,7 +152,13 @@ const removeHiddenDataStreams = (widget: LineScatterChartWidget): LineScatterCha
   },
 });
 
-const LineScatterChartWidgetComponent: React.FC<LineScatterChartWidget> = (widget) => {
+const RenderLineScatterChartWidgetComponent = ({
+  useProperty,
+  widget,
+}: {
+  useProperty: PropertyLens<LineScatterChartWidget>;
+  widget: LineScatterChartWidget;
+}) => {
   const widgetToDisplay = removeHiddenDataStreams(widget);
   const { viewport } = useViewport();
   const readOnly = useSelector((state: DashboardState) => state.readOnly);
@@ -204,6 +217,24 @@ const LineScatterChartWidgetComponent: React.FC<LineScatterChartWidget> = (widge
   // the 44 is from the widget tile header's height
   const size = { width: chartSize.width, height: chartSize.height - 44 };
 
+  const [legendOptions, updateLegendOptions] = useProperty(
+    (properties) => properties.legend,
+    (properties, updatedLegendOptions) => {
+      console.log('***', updatedLegendOptions);
+      return {
+        ...properties,
+        legend: {
+          ...properties.legend,
+          ...updatedLegendOptions?.legend,
+        },
+      };
+    }
+  );
+
+  console.log('legendOptions - ', legendOptions);
+
+  const legendOption = maybeWithDefault(undefined, legendOptions);
+
   const isEmptyWidget = queries.length === 0;
   if (isEmptyWidget) {
     return (
@@ -215,6 +246,11 @@ const LineScatterChartWidgetComponent: React.FC<LineScatterChartWidget> = (widge
       </WidgetTile>
     );
   }
+
+  // const handleLegendOptionChange = (options: any) => {
+  //   console.log(options);
+
+  // };
 
   return (
     <WidgetTile widget={widget} removeable title={title}>
@@ -228,11 +264,17 @@ const LineScatterChartWidgetComponent: React.FC<LineScatterChartWidget> = (widge
         thresholds={thresholds}
         significantDigits={significantDigits}
         size={size}
-        legend={legend}
+        legend={legendOption}
         defaultVisualizationType={mapConnectionStyleToVisualizationType(line?.connectionStyle)}
+        onChartOptionsChange={(value) => updateLegendOptions(value as ChartOptions['legend'])}
       />
     </WidgetTile>
   );
 };
 
-export default LineScatterChartWidgetComponent;
+export const LineScatterChartWidgetComponent: React.FC<LineScatterChartWidget> = (widget) => (
+  <PropertiesSection
+    isVisible={isLineAndScatterWidget}
+    render={({ useProperty }) => <RenderLineScatterChartWidgetComponent useProperty={useProperty} widget={widget} />}
+  />
+);

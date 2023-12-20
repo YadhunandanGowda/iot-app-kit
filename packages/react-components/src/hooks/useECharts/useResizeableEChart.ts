@@ -7,17 +7,22 @@ import {
 } from '../../components/chart/eChartsConstants';
 import { ResizeCallbackData } from 'react-resizable';
 import { useMeasure } from 'react-use';
+import { ChartLegend, ChartOptions } from '../../components/chart/types';
 
-const getChartWidth = (width: number, staticWidth: number, rightLegend?: boolean) => {
-  if (!rightLegend) {
-    return width - staticWidth;
+const getChartWidth = (width: number, staticWidth: number, legendWidth?: string, rightLegend?: boolean) => {
+  if (rightLegend && legendWidth) {
+    console.count();
+    console.log('width', legendWidth);
+    const legendWidthInNumber = +(width * +legendWidth.replace('%', ''));
+    return width - staticWidth - legendWidthInNumber;
   }
   return width * CHART_RESIZE_INITIAL_FACTOR - staticWidth;
 };
 
-const getChartHeight = (height: number, rightLegend?: boolean) => {
-  if (!rightLegend) {
-    return height;
+const getChartHeight = (height: number, legendHeight?: string, rightLegend?: boolean) => {
+  if (rightLegend && legendHeight) {
+    const legendHeightInNumber = +(height * +legendHeight.replace('%', ''));
+    return height - legendHeightInNumber;
   }
   return height * CHART_RESIZE_INITIAL_FACTOR;
 };
@@ -40,20 +45,21 @@ const getChartHeight = (height: number, rightLegend?: boolean) => {
 export const useResizeableEChart = (
   chartRef: MutableRefObject<ECharts | null>,
   size: { width: number; height: number },
-  rightLegend?: boolean,
+  onChartOptionsChange: (options: Omit<ChartOptions, 'queries'>) => void,
+  legend?: ChartLegend,
   isBottomAligned?: boolean
 ) => {
   const { width, height } = size;
   const [leftLegendRef, { width: leftLegendWidth }] = useMeasure<HTMLDivElement>();
-  const [chartWidth, setChartWidth] = useState(getChartWidth(width, leftLegendWidth));
-  const [chartHeight, setChartHeight] = useState(getChartHeight(height));
-  const rightLegendWidth = rightLegend ? width - leftLegendWidth - chartWidth : 0;
-  const rightLegendHeight = rightLegend ? height - chartHeight : 0;
+  const [chartWidth, setChartWidth] = useState(getChartWidth(width, leftLegendWidth, legend?.width));
+  const [chartHeight, setChartHeight] = useState(getChartHeight(height, legend?.height));
+  const rightLegendWidth = legend?.visible ? width - leftLegendWidth - chartWidth : 0;
+  const rightLegendHeight = legend?.visible ? height - chartHeight : 0;
 
   const onResize = (_event: SyntheticEvent, data: ResizeCallbackData) => {
     _event.stopPropagation();
 
-    if (!rightLegend) {
+    if (!legend?.visible) {
       isBottomAligned ? setChartHeight(height) : setChartWidth(width - leftLegendWidth);
     } else {
       isBottomAligned ? setChartHeight(data.size.height) : setChartWidth(data.size.width);
@@ -61,12 +67,22 @@ export const useResizeableEChart = (
   };
 
   useEffect(() => {
-    setChartWidth(getChartWidth(width, leftLegendWidth, rightLegend));
-  }, [width, leftLegendWidth, rightLegend]);
+    console.log('useeffect');
+    onChartOptionsChange({
+      legend: {
+        height: ((rightLegendHeight / height) * 100).toFixed(2).toString() + '%',
+        width: ((rightLegendWidth / width) * 100).toFixed(2).toString() + '%',
+      },
+    });
+  }, [rightLegendWidth, rightLegendHeight]);
 
   useEffect(() => {
-    setChartHeight(getChartHeight(height, rightLegend));
-  }, [height, rightLegend]);
+    setChartWidth(getChartWidth(width, leftLegendWidth, legend?.width, legend?.visible));
+  }, [width, leftLegendWidth, legend?.visible]);
+
+  useEffect(() => {
+    setChartHeight(getChartHeight(height, legend?.height, legend?.visible));
+  }, [height, legend?.visible]);
 
   useEffect(() => {
     const chart = chartRef.current;

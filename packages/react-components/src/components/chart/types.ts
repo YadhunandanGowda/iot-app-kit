@@ -96,6 +96,7 @@ export type ChartOptions = {
   theme?: string;
   id?: string;
   titleText?: string;
+  onChartOptionsChange?: (options: Omit<ChartOptions, 'queries'>) => void;
 };
 
 export interface ViewportInMs {
